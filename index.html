@@ -68,7 +68,7 @@
 <body class="w-screen h-screen m-0 p-0 text-slate-100 flex flex-col select-none">
 
   <!-- Top Navigation & Status Bar -->
-  <header class="relative z-20 flex items-center justify-between px-3 py-2 bg-slate-900/90 backdrop-blur border-b border-cyan-900/60 shadow-lg">
+  <header id="top-header" class="relative z-20 flex items-center justify-between px-3 py-2 bg-slate-900/90 backdrop-blur border-b border-cyan-900/60 shadow-lg transition-all duration-200">
     <div class="flex items-center space-x-2 sm:space-x-3">
       <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center shadow-md shadow-cyan-500/20 text-xl font-bold">
         🦐
@@ -78,12 +78,12 @@
           <span>大發釣蝦場</span>
           <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/80 font-mono">3D PRO</span>
         </h1>
-        <div class="flex items-center gap-2 text-[10px] text-slate-400">
-          <span id="header-pond-badge" class="text-cyan-300">公蝦池</span>
+        <div id="header-quick-config" class="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer hover:opacity-90" title="點擊重新選擇釣竿、浮標、釣餌與蝦池">
+          <span id="header-pond-badge" class="text-cyan-300 underline decoration-cyan-700">公蝦池</span>
           <span>•</span>
-          <span id="header-spot-badge" class="text-amber-300">水泡區</span>
+          <span id="header-spot-badge" class="text-amber-300 underline decoration-amber-700">水泡區</span>
           <span>•</span>
-          <span id="header-rod-badge" class="text-emerald-300">2/8調</span>
+          <span id="header-rod-badge" class="text-emerald-300 underline decoration-emerald-700">2/8調</span>
         </div>
       </div>
     </div>
@@ -122,9 +122,9 @@
       </button>
 
       <!-- Reconfigure Setup Button -->
-      <button id="btn-open-setup" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition active:scale-95" title="重新設定竿標餌池">
-        <span>⚙️</span>
-        <span class="hidden md:inline">配置</span>
+      <button id="btn-open-setup" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 border border-cyan-300/60 text-xs font-bold text-white shadow-md shadow-cyan-500/20 transition active:scale-95" title="選擇釣竿、浮標、釣餌與蝦池坐位">
+        <span>🎣</span>
+        <span>選竿/選標/選餌</span>
       </button>
 
       <!-- Sound Mute/Unmute -->
@@ -142,10 +142,13 @@
   <!-- Main Game 3D Viewport & HUD Container -->
   <main class="relative flex-1 w-full h-full overflow-hidden bg-slate-950">
     <!-- Three.js 3D WebGL Canvas -->
-    <div id="three-container" class="absolute inset-0 w-full h-full cursor-crosshair"></div>
+    <div id="three-container" class="absolute inset-0 w-full h-full cursor-crosshair origin-center will-change-transform"></div>
+
+    <!-- Exaggerated 2D Tension Line, Harmonic Waves & Impact Speed-Lines Overlay Canvas (Active during FIGHTING) -->
+    <canvas id="fight-tension-canvas" class="pointer-events-none absolute inset-0 w-full h-full z-15 hidden"></canvas>
 
     <!-- Top Center Drag Hint Badge -->
-    <div class="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none bg-slate-900/80 backdrop-blur-md border border-slate-700/60 px-3.5 py-1 rounded-full text-[11px] text-cyan-300 flex items-center gap-1.5 shadow-lg select-none">
+    <div id="hud-top-center" class="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none bg-slate-900/80 backdrop-blur-md border border-slate-700/60 px-3.5 py-1 rounded-full text-[11px] text-cyan-300 flex items-center gap-1.5 shadow-lg select-none">
       <span class="animate-pulse">🖱️</span>
       <span>拖曳畫面可 360° 環顧釣蝦場 • 雙擊還原視角</span>
     </div>
@@ -156,7 +159,7 @@
     <!-- In-Game 3D View HUD Overlays -->
 
     <!-- Top Left: Float Signal & Shrimp State Monitor -->
-    <div class="absolute top-3 left-3 z-10 flex flex-col space-y-2 pointer-events-none">
+    <div id="hud-top-left" class="absolute top-3 left-3 z-10 flex flex-col space-y-2 pointer-events-none">
       <!-- Float Status Box -->
       <div class="bg-slate-900/85 backdrop-blur-md border border-cyan-800/60 p-2.5 rounded-xl shadow-xl w-52 sm:w-60">
         <div class="flex items-center justify-between text-xs mb-1.5">
@@ -194,7 +197,7 @@
     </div>
 
     <!-- Top Right: Current Spot & Pond Map Widget -->
-    <div class="absolute top-3 right-3 z-10 flex flex-col items-end space-y-2">
+    <div id="hud-top-right" class="absolute top-3 right-3 z-10 flex flex-col items-end space-y-2">
       <!-- Mini Pond Visualizer Widget -->
       <div class="bg-slate-900/85 backdrop-blur-md border border-slate-800 p-2 rounded-xl shadow-xl flex flex-col items-center">
         <div class="text-[10px] text-slate-400 mb-1 flex items-center justify-between w-28">
@@ -279,85 +282,45 @@
       </div>
     </div>
 
-    <!-- FIGHTING MODE HUD: Tension Meter & Real-time Landing Simulator -->
-    <div id="fight-hud" class="absolute bottom-28 sm:bottom-24 left-1/2 -translate-x-1/2 z-20 w-11/12 max-w-lg bg-slate-900/90 backdrop-blur-md border-2 border-cyan-500/70 p-3.5 rounded-2xl shadow-2xl hidden">
-      <!-- Fight Title & Shrimp Behavior Indicator -->
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-1.5">
-          <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-          <span class="text-xs font-black text-red-400 tracking-wide uppercase">搏蝦拉鋸戰 (FIGHTING)</span>
-        </div>
-        <div id="fight-behavior-badge" class="px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700/80 text-[11px] font-bold animate-pulse">
-          💥 泰國蝦劇烈倒退彈跳！
-        </div>
+    <!-- FIGHTING MODE HUD: Entire screen cleared! ONLY this single Fight Button at the bottom -->
+    <div id="fight-hud" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-11/12 max-w-md pointer-events-auto hidden">
+      <!-- Hidden compatibility nodes (screen is 100% cleared except the button below) -->
+      <div id="fight-status-strip" class="hidden">
+        <div id="fight-behavior-badge"></div>
+        <span id="fight-tension-pct">50%</span>
+        <b id="shrimp-stamina-val">100%</b>
+        <span id="landing-progress-val">0%</span>
       </div>
 
-      <!-- Main Tension Gauge Bar -->
-      <div class="mb-2">
-        <div class="flex items-center justify-between text-[11px] mb-1">
-          <span class="text-slate-400 font-semibold">釣線與竿尖張力 (Tension)</span>
-          <span id="fight-tension-pct" class="font-mono font-bold text-emerald-400">54% [安全]</span>
+      <!-- Single Color-Changing Fight Button at Bottom: Yellow (快脫鉤) / Blue (適中) / Red (快斷線) -->
+      <button id="btn-fight-reel" class="relative w-full py-4 px-5 rounded-2xl border-4 border-sky-200 bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 text-white font-black text-base sm:text-lg shadow-[0_0_40px_rgba(14,165,233,0.9)] transition-all duration-75 active:scale-95 select-none overflow-hidden flex flex-col items-center justify-center gap-1.5 will-change-transform">
+        <div class="flex items-center justify-center gap-2 z-10">
+          <span id="fight-btn-icon" class="text-2xl">🔵</span>
+          <span id="fight-btn-label" class="tracking-wide">藍色適中！點按或按住「搏蝦拉竿」</span>
         </div>
-        <!-- Tension Bar with zones: Blue (Slack), Green (Sweet), Red (Break) -->
-        <div class="relative h-5 bg-slate-950 rounded-lg overflow-hidden border border-slate-800 p-0.5">
-          <!-- Zone indicators -->
-          <div class="absolute inset-0 flex opacity-25">
-            <div class="w-[30%] bg-blue-500" title="太鬆-脫鉤風險"></div>
-            <div class="w-[45%] bg-emerald-500" title="完美張力區"></div>
-            <div class="w-[25%] bg-rose-600" title="危險過載-斷線風險"></div>
+        <div id="fight-btn-sub" class="text-xs font-extrabold opacity-95 z-10 flex items-center gap-2">
+          <span>🟡黃=快脫鉤(快按)</span>
+          <span>•</span>
+          <span>🔵藍=適中(耗體力)</span>
+          <span>•</span>
+          <span>🔴紅=快斷線(放手)</span>
+        </div>
+        <!-- Integrated Tension & Stamina Bars inside the button -->
+        <div class="w-full grid grid-cols-2 gap-2 mt-1 z-10 px-1">
+          <div class="relative h-2.5 bg-slate-950/80 rounded-full overflow-hidden border border-white/30" title="張力條：左黃(快脫鉤) / 中藍(適中) / 右紅(快斷線)">
+            <div class="absolute inset-0 flex opacity-45">
+              <div class="w-[28%] bg-yellow-400"></div>
+              <div class="w-[44%] bg-sky-400"></div>
+              <div class="w-[28%] bg-red-500"></div>
+            </div>
+            <div id="tension-fill-bar" class="h-full bg-white rounded-full transition-all duration-75 shadow-[0_0_8px_#fff]" style="width: 50%"></div>
           </div>
-          <!-- Realtime Tension Needle/Bar -->
-          <div id="tension-fill-bar" class="h-full rounded bg-gradient-to-r from-blue-400 via-emerald-400 to-rose-500 w-1/2 transition-all duration-75 shadow-sm"></div>
-          <!-- Sweet Spot Target Bracket -->
-          <div class="absolute top-0 bottom-0 left-[30%] w-[45%] border-x-2 border-emerald-300 pointer-events-none"></div>
-        </div>
-        <div class="flex justify-between text-[9px] text-slate-500 px-1 mt-0.5 font-mono">
-          <span class="text-blue-400">鬆弛脫鉤 (0~30%)</span>
-          <span class="text-emerald-400 font-bold">★ 完美消耗體力 (30~75%)</span>
-          <span class="text-rose-400 font-bold">極限斷線 (75~100%)</span>
-        </div>
-      </div>
-
-      <!-- Landing Progress & Shrimp Stamina -->
-      <div class="grid grid-cols-2 gap-2 mb-2 text-xs">
-        <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800">
-          <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-            <span>泰國蝦殘餘體力</span>
-            <span id="shrimp-stamina-val" class="text-amber-400 font-mono font-bold">100%</span>
-          </div>
-          <div class="h-2 bg-slate-900 rounded-full overflow-hidden">
-            <div id="shrimp-stamina-bar" class="h-full bg-gradient-to-r from-amber-500 to-red-500 w-full transition-all duration-150"></div>
+          <div class="relative h-2.5 bg-slate-950/80 rounded-full overflow-hidden border border-white/30" title="泰國蝦殘餘體力 (歸零即起蝦)">
+            <div id="shrimp-stamina-bar" class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-75" style="width: 100%"></div>
+            <div id="landing-progress-bar" class="hidden" style="width: 0%"></div>
           </div>
         </div>
-        <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800">
-          <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-            <span>起蝦出水進度</span>
-            <span id="landing-progress-val" class="text-cyan-400 font-mono font-bold">0%</span>
-          </div>
-          <div class="h-2 bg-slate-900 rounded-full overflow-hidden">
-            <div id="landing-progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-sky-400 w-0 transition-all duration-150"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Real-time Interactive Fight Controls -->
-      <div class="grid grid-cols-3 gap-2">
-        <button id="btn-fight-tilt-left" class="py-2.5 px-1 bg-slate-800 hover:bg-slate-700 active:bg-cyan-900 border border-slate-700 active:border-cyan-400 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center justify-center transition active:scale-95">
-          <span class="text-sm">⬅️</span>
-          <span>向左控竿</span>
-        </button>
-        <button id="btn-fight-reel" class="py-2.5 px-1 bg-gradient-to-b from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 active:from-cyan-400 active:to-blue-500 border border-cyan-400 rounded-xl text-xs font-black text-white flex flex-col items-center justify-center shadow-lg shadow-cyan-600/30 transition active:scale-95 select-none">
-          <span class="text-base">🎣</span>
-          <span>按住收線拉竿</span>
-        </button>
-        <button id="btn-fight-tilt-right" class="py-2.5 px-1 bg-slate-800 hover:bg-slate-700 active:bg-cyan-900 border border-slate-700 active:border-cyan-400 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center justify-center transition active:scale-95">
-          <span class="text-sm">➡️</span>
-          <span>向右控竿</span>
-        </button>
-      </div>
-      <div class="text-[10px] text-center text-slate-400 mt-1.5">
-        💡 提示：蝦子往左暴衝請向右側竿，按住「收線拉竿」維持在綠色張力區！
-      </div>
+      </button>
     </div>
 
     <!-- Bottom Primary Action Control Deck -->
@@ -391,8 +354,8 @@
     </div>
   </main>
 
-  <!-- MODAL: Equipment & Pond Setup Wizard (竿標餌池位) -->
-  <div id="modal-setup" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto hidden">
+  <!-- MODAL: Equipment & Pond Setup Wizard (竿標餌池位) - Visible on start so player picks Rod/Float/Bait! -->
+  <div id="modal-setup" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
     <div class="relative w-full max-w-2xl bg-slate-900 border border-cyan-800/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
       <!-- Modal Header Banner with Shrimp Hall Photo -->
       <div class="relative h-32 sm:h-36 w-full overflow-hidden border-b border-cyan-900/60">
@@ -433,6 +396,26 @@
         <button id="tab-btn-auto" class="wizard-tab px-4 py-2.5 font-bold text-slate-400 hover:text-slate-200 flex items-center gap-1 shrink-0">
           <span>5. 自動分配報告</span>
         </button>
+      </div>
+
+      <!-- Quick Current Gear Bar inside Modal (Click any pill to jump to Rod / Float / Bait / Pond tab) -->
+      <div class="px-4 py-2 bg-slate-900/95 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="text-slate-400 font-semibold">目前裝備：</span>
+          <button type="button" onclick="document.getElementById('tab-btn-rod').click()" class="px-2 py-0.5 rounded bg-cyan-950/90 border border-cyan-700/70 text-cyan-300 hover:border-cyan-400 transition">
+            🎣 <span id="pill-rod-name">2/8 調硬調竿</span>
+          </button>
+          <button type="button" onclick="document.getElementById('tab-btn-float').click()" class="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-700/70 text-amber-300 hover:border-amber-400 transition">
+            🎯 <span id="pill-float-name">三色極細長標</span>
+          </button>
+          <button type="button" onclick="document.getElementById('tab-btn-bait').click()" class="px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-700/70 text-emerald-300 hover:border-emerald-400 transition">
+            🪱 <span id="pill-bait-name">特選赤尾青</span>
+          </button>
+          <button type="button" onclick="document.getElementById('tab-btn-pond').click()" class="px-2 py-0.5 rounded bg-rose-950/90 border border-rose-700/70 text-rose-300 hover:border-rose-400 transition">
+            🦞 <span id="pill-pond-name">公蝦池 • A區</span>
+          </button>
+        </div>
+        <span class="text-[10px] text-slate-400">👆 點擊上方分頁或標籤可自由切換竿、標、餌</span>
       </div>
 
       <!-- Tab Content Area -->
@@ -987,11 +970,11 @@
         </div>
 
         <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-          <h4 class="font-bold text-amber-400 text-sm mb-1">⚡ 2. 搏蝦與張力控制 (Tension Control)</h4>
+          <h4 class="font-bold text-amber-400 text-sm mb-1">⚡ 2. 單鍵變色搏蝦控制 (黃色快脫鉤 / 藍色適中 / 紅色快斷線)</h4>
           <p class="text-slate-400">
-            • <b>藍色鬆弛區 (0~30%)</b>: 線太鬆，泰國蝦後踢會脫鉤逃脫！<br>
-            • <b>綠色安全區 (30~75%)</b>: 完美受力！有效消耗蝦子體力，快速累積起蝦進度！<br>
-            • <b>紅色危險區 (75~100%)</b>: 瀕臨斷線或開鉤！蝦子暴衝時請暫停收線，並向反方向側竿化解。
+            • <b>不擋畫面單鍵操作</b>: 搏蝦時僅在畫面最下方顯示一顆變色按鈕，完整呈現 3D 釣竿滿弓搏鬥畫面！<br>
+            • <b>三色張力直覺判讀</b>: <b>🟡 黃色＝快脫鉤</b>（需連點或按住拉緊）、<b>🔵 藍色＝張力適中</b>（持續消耗蝦體力）、<b>🔴 紅色＝快斷線</b>（蝦子暴衝倒退時請立刻放手）！<br>
+            • <b>蝦子沒力即破水飛起</b>: 當泰國蝦體力耗盡至 0% 時，釣竿會直接將大蝦拉出水面飛入視線！
           </p>
         </div>
 
@@ -1063,10 +1046,10 @@
 
     // Rod Specifications
     const ROD_SPECS = {
-      '19': { name: '【1/9 調】極光競技超硬竿', hardness: 0.95, buffer: 0.30, strikeSpeed: 0.15, maxBend: 0.08, sweetRange: [35, 70], breakRate: 1.4 },
-      '28': { name: '【2/8 調】斬蝦獵手硬調竿', hardness: 0.80, buffer: 0.65, strikeSpeed: 0.22, maxBend: 0.16, sweetRange: [30, 75], breakRate: 1.0 },
-      '37': { name: '【3/7 調】青嵐黏蝦休閒竿', hardness: 0.55, buffer: 0.88, strikeSpeed: 0.32, maxBend: 0.28, sweetRange: [25, 80], breakRate: 0.7 },
-      '46': { name: '【4/6 調】太極極軟滿弓竿', hardness: 0.35, buffer: 0.98, strikeSpeed: 0.42, maxBend: 0.42, sweetRange: [20, 85], breakRate: 0.45 },
+      '19': { name: '【1/9 調】極光競技超硬竿', hardness: 0.95, buffer: 0.80, strikeSpeed: 0.15, maxBend: 0.14, sweetRange: [30, 70], breakRate: 0.55 },
+      '28': { name: '【2/8 調】斬蝦獵手硬調竿', hardness: 0.80, buffer: 0.90, strikeSpeed: 0.22, maxBend: 0.22, sweetRange: [28, 72], breakRate: 0.45 },
+      '37': { name: '【3/7 調】青嵐黏蝦休閒竿', hardness: 0.55, buffer: 1.00, strikeSpeed: 0.32, maxBend: 0.32, sweetRange: [26, 74], breakRate: 0.35 },
+      '46': { name: '【4/6 調】太極極軟滿弓竿', hardness: 0.35, buffer: 1.10, strikeSpeed: 0.42, maxBend: 0.44, sweetRange: [24, 76], breakRate: 0.28 },
     };
 
     // Float Specifications
@@ -1286,7 +1269,9 @@
        ===================================================================== */
     let scene, camera, renderer, animationFrameId;
     let poolMesh, waterMesh, bubblerMesh, bubblerParticles;
-    let rodGroup, rodSegments = [], fishingLineMesh, baitHookMesh, castTrailMesh;
+    let rodGroup, rodSegments = [], fishingLineMesh, fishingLineGlowMesh, baitHookMesh, castTrailMesh;
+    let lastTipWorldPos = new THREE.Vector3(1.05, 2.5, 2.5);
+    let lastFloatWorldPos = new THREE.Vector3(0.0, 0.15, -1.2);
     let floatGroup, floatMesh;
     let swimmingPrawnGroup;
     let waterColumnMesh;
@@ -2258,9 +2243,21 @@
       ];
       const curve = new THREE.CatmullRomCurve3(points);
       const lineGeo = new THREE.TubeGeometry(curve, 32, 0.008, 6, false);
-      const lineMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.92 });
+      const lineMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.95 });
       fishingLineMesh = new THREE.Mesh(lineGeo, lineMat);
       scene.add(fishingLineMesh);
+
+      const glowGeo = new THREE.TubeGeometry(curve, 32, 0.035, 8, false);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      fishingLineGlowMesh = new THREE.Mesh(glowGeo, glowMat);
+      fishingLineGlowMesh.visible = false;
+      scene.add(fishingLineGlowMesh);
     }
 
     function buildSwimmingPrawn() {
@@ -2500,11 +2497,17 @@
     function onWindowResize() {
       const container = document.getElementById('three-container');
       if (!container || !renderer || !camera) return;
-      const width = container.clientWidth;
-      const height = container.clientHeight;
+      const width = container.clientWidth || window.innerWidth;
+      const height = container.clientHeight || window.innerHeight;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+
+      const tCanvas = document.getElementById('fight-tension-canvas');
+      if (tCanvas) {
+        tCanvas.width = width;
+        tCanvas.height = height;
+      }
     }
 
     /* 3D Main Animation Loop — FIXED clock.getDelta() order! */
@@ -2568,8 +2571,40 @@
 
       if (GAME.anim.cameraShake > 0) {
         GAME.anim.cameraShake = Math.max(0, GAME.anim.cameraShake - delta * 2.5);
-        camera.position.x += (Math.random() - 0.5) * 0.18 * GAME.anim.cameraShake;
-        camera.position.y += (Math.random() - 0.5) * 0.18 * GAME.anim.cameraShake;
+        camera.position.x += (Math.random() - 0.5) * 0.22 * GAME.anim.cameraShake;
+        camera.position.y += (Math.random() - 0.5) * 0.22 * GAME.anim.cameraShake;
+      }
+
+      // Intense 3D Camera + Full-Screen Viewport Shake during FIGHTING!
+      const threeContainer = document.getElementById('three-container');
+      if (GAME.cycle.state === 'FIGHTING') {
+        const rodSpec = ROD_SPECS[GAME.config.rod];
+        const sweetMin = rodSpec.sweetRange[0];
+        const sweetMax = rodSpec.sweetRange[1];
+        const t = GAME.fight.tension;
+        const activePull = GAME.fight.isReeling || (GAME.fight.tapBoostTimer > 0);
+        const isBlast = GAME.fight.shrimpBehavior === 'tail_blast';
+        const isDanger = (t < sweetMin || t > sweetMax);
+
+        // Calculate visceral shake intensity
+        let shakeAmp = 0.45 + (t / 100) * 0.55;
+        if (activePull) shakeAmp += 0.35;
+        if (isBlast) shakeAmp += 0.75;
+        if (isDanger) shakeAmp += 0.55;
+
+        // 3D Camera jolt
+        camera.position.x += (Math.sin(elapsedTime * 55) * 0.08 + (Math.random() - 0.5) * 0.11) * shakeAmp;
+        camera.position.y += (Math.cos(elapsedTime * 63) * 0.08 + (Math.random() - 0.5) * 0.11) * shakeAmp;
+
+        // Full-Screen DOM Viewport Shake (scaled 1.045 so edges never clip!)
+        if (threeContainer) {
+          const domX = (Math.sin(elapsedTime * 68) * 7.5 + (Math.random() - 0.5) * 9.0) * shakeAmp;
+          const domY = (Math.cos(elapsedTime * 74) * 7.5 + (Math.random() - 0.5) * 9.0) * shakeAmp;
+          const domRot = (Math.sin(elapsedTime * 48) * 0.85 + (Math.random() - 0.5) * 0.7) * shakeAmp;
+          threeContainer.style.transform = `scale(1.048) translate3d(${domX.toFixed(1)}px, ${domY.toFixed(1)}px, 0) rotate(${domRot.toFixed(2)}deg)`;
+        }
+      } else if (threeContainer && threeContainer.style.transform) {
+        threeContainer.style.transform = '';
       }
 
       const forward = new THREE.Vector3(0, -0.38, -1).normalize();
@@ -2586,6 +2621,11 @@
       }
 
       renderer.render(scene, camera);
+
+      // Render 2D Exaggerated Tension Line & Shockwave Overlay when in FIGHTING mode
+      if (GAME.cycle.state === 'FIGHTING') {
+        renderExaggeratedTensionLineOverlay(elapsedTime);
+      }
 
       if (inspectRenderer && inspectScene && inspectCamera && !document.getElementById('modal-catch-inspect').classList.contains('hidden')) {
         if (inspectPrawnGroup) {
@@ -2671,27 +2711,59 @@
       GAME.cycle.floatSubmerge += (GAME.cycle.targetSubmerge - GAME.cycle.floatSubmerge) * 0.15;
       const submergeDepth = GAME.cycle.floatSubmerge * 0.18;
 
-      if (GAME.cycle.state === 'FIGHTING') {
-        // Float circles and darts with the struggling 3D prawn!
-        const swimX = spotPos.x + Math.sin(elapsedTime * 4.5) * 0.85 + (GAME.fight.shrimpBehavior === 'dart_left' ? -0.9 : GAME.fight.shrimpBehavior === 'dart_right' ? 0.9 : 0);
-        const swimZ = spotPos.z + Math.cos(elapsedTime * 3.8) * 0.55;
-        floatGroup.position.x += (swimX - floatGroup.position.x) * 0.12;
-        floatGroup.position.z += (swimZ - floatGroup.position.z) * 0.12;
-        floatGroup.position.y = 0.02 + Math.sin(elapsedTime * 14) * 0.06;
-        floatGroup.rotation.x = 0.45;
+      if (GAME.anim.type === 'LANDING_FLY') {
+        // 3D Prawn & Float burst out of the water and arc up toward the rod tip in full view!
+        const p = Math.min(1.0, GAME.anim.timer / GAME.anim.duration);
+        const startX = GAME.anim.landStartX ?? spotPos.x;
+        const startZ = GAME.anim.landStartZ ?? spotPos.z;
+        const curX = startX + (0.45 - startX) * p;
+        const curZ = startZ + (2.6 - startZ) * p;
+        const curY = 0.15 + Math.sin(p * Math.PI * 0.85) * 2.25;
+
+        floatGroup.position.set(curX, curY + 0.35, curZ);
+        floatGroup.rotation.x = 0.35 * Math.sin(elapsedTime * 12);
 
         if (swimmingPrawnGroup) {
           swimmingPrawnGroup.visible = true;
-          swimmingPrawnGroup.position.set(floatGroup.position.x, -0.22 + (GAME.fight.landingProgress / 100) * 0.25, floatGroup.position.z);
-          swimmingPrawnGroup.rotation.y = elapsedTime * 3.5;
+          swimmingPrawnGroup.position.set(curX, curY - 0.25, curZ);
+          swimmingPrawnGroup.rotation.set(0.25 * Math.sin(elapsedTime * 16), elapsedTime * 5.5, 0);
           const tail = swimmingPrawnGroup.userData.tailSegments;
           if (tail) {
             tail.forEach((seg, idx) => {
-              seg.rotation.x = Math.sin(elapsedTime * 18 + idx) * 0.28;
+              seg.rotation.x = Math.sin(elapsedTime * 22 + idx) * 0.32;
             });
           }
-          if (Math.random() < 0.22) {
-            triggerWaterRipple(floatGroup.position.x, floatGroup.position.z, 1.1, 1);
+        }
+        return;
+      }
+
+      if (GAME.cycle.state === 'FIGHTING') {
+        // Float and 3D prawn dart dynamically across the pool during the fight!
+        const kickOffset = GAME.fight.shrimpBehavior === 'tail_blast' ? Math.sin(elapsedTime * 24) * 0.45 : 0;
+        const swimX = spotPos.x + Math.sin(elapsedTime * 3.8) * 1.15 + kickOffset;
+        const swimZ = spotPos.z + Math.cos(elapsedTime * 3.2) * 0.65 + (GAME.fight.landingProgress / 100) * 1.1;
+        floatGroup.position.x += (swimX - floatGroup.position.x) * 0.14;
+        floatGroup.position.z += (swimZ - floatGroup.position.z) * 0.14;
+        floatGroup.position.y = -0.02 + (GAME.fight.landingProgress / 100) * 0.14 + Math.sin(elapsedTime * 16) * 0.06;
+        floatGroup.rotation.x = 0.55 + Math.sin(elapsedTime * 12) * 0.18;
+        floatGroup.rotation.z = -floatGroup.position.x * 0.15;
+
+        if (swimmingPrawnGroup) {
+          swimmingPrawnGroup.visible = true;
+          swimmingPrawnGroup.position.set(
+            floatGroup.position.x,
+            -0.26 + (GAME.fight.landingProgress / 100) * 0.32,
+            floatGroup.position.z
+          );
+          swimmingPrawnGroup.rotation.y = Math.atan2(0.8 - floatGroup.position.x, 3.8 - floatGroup.position.z) + Math.PI;
+          const tail = swimmingPrawnGroup.userData.tailSegments;
+          if (tail) {
+            tail.forEach((seg, idx) => {
+              seg.rotation.x = Math.sin(elapsedTime * 22 + idx) * 0.32;
+            });
+          }
+          if (Math.random() < (GAME.fight.shrimpBehavior === 'tail_blast' ? 0.42 : 0.22)) {
+            triggerWaterRipple(floatGroup.position.x, floatGroup.position.z, 1.25, 1);
           }
         }
       } else {
@@ -2795,18 +2867,44 @@
             rodGroup.position.set(1.05, 1.45, 4.3);
             rodGroup.rotation.x = -0.35;
           }
+        } else if (GAME.anim.type === 'LANDING_FLY') {
+          // Dramatic high rod lift pulling the prawn out of the pool in full view!
+          const easeOut = 1 - Math.pow(1 - p, 3);
+          rodGroup.position.set(0.65, 1.65 + easeOut * 0.45, 4.05);
+          rodGroup.rotation.x = 0.15 + easeOut * 0.62;
+          rodGroup.rotation.y = -0.10;
+          customSegBend = -0.10 * (1 - p * 0.35) + Math.sin(p * Math.PI * 4) * 0.025;
+          if (p >= 1.0) {
+            GAME.anim.type = 'NONE';
+            rodGroup.position.set(1.05, 1.45, 4.3);
+            rodGroup.rotation.set(-0.35, -0.18, 0.05);
+            if (swimmingPrawnGroup) swimmingPrawnGroup.visible = false;
+            document.getElementById('modal-catch-inspect').classList.remove('hidden');
+          }
         }
       } else {
-        // Normal State Rod Posture
+        // Normal & Fighting State Rod Posture (Prominent in-frame 3D rod battle!)
         if (GAME.cycle.state === 'FIGHTING') {
-          tensionRatio = GAME.fight.tension / 100.0;
-          rodGroup.position.x = 1.05 + GAME.fight.tiltDirection * 0.25 + (Math.random() - 0.5) * 0.035 * tensionRatio;
-          rodGroup.position.y = 1.58 + (GAME.fight.isReeling ? 0.18 : 0.0) + (Math.random() - 0.5) * 0.035 * tensionRatio;
-          rodGroup.rotation.x = -0.10 + (GAME.fight.isReeling ? 0.35 : 0.10);
+          tensionRatio = Math.max(0.15, GAME.fight.tension / 100.0);
+          const activePull = GAME.fight.isReeling || (GAME.fight.tapBoostTimer > 0);
+          const kickJitter = (GAME.fight.shrimpBehavior === 'tail_blast' ? Math.sin(elapsedTime * 38) * 0.055 : Math.sin(elapsedTime * 22) * 0.022) * tensionRatio;
+          const targetX = 0.68 + (floatGroup ? floatGroup.position.x * 0.08 : 0);
+          const targetY = 1.62 + (activePull ? 0.24 : 0.0) + kickJitter;
+          const targetZ = 4.05;
+          const targetRotX = 0.08 + (activePull ? 0.34 : 0.0) - tensionRatio * 0.18 + kickJitter * 1.4;
+          const targetRotY = -0.12 - (floatGroup ? floatGroup.position.x * 0.11 : 0);
+
+          rodGroup.position.x += (targetX - rodGroup.position.x) * 0.22;
+          rodGroup.position.y += (targetY - rodGroup.position.y) * 0.22;
+          rodGroup.position.z += (targetZ - rodGroup.position.z) * 0.22;
+          rodGroup.rotation.x += (targetRotX - rodGroup.rotation.x) * 0.22;
+          rodGroup.rotation.y += (targetRotY - rodGroup.rotation.y) * 0.22;
         } else {
           rodGroup.position.x += (1.05 - rodGroup.position.x) * 0.15;
           rodGroup.position.y += (1.45 - rodGroup.position.y) * 0.15;
+          rodGroup.position.z += (4.30 - rodGroup.position.z) * 0.15;
           rodGroup.rotation.x += (-0.35 - rodGroup.rotation.x) * 0.15;
+          rodGroup.rotation.y += (-0.18 - rodGroup.rotation.y) * 0.15;
         }
       }
 
@@ -2821,7 +2919,7 @@
         }
       });
 
-      // Update 3D Fishing Line from Rod Tip to Float
+      // Update 3D Fishing Line (with Exaggerated Vibrating Tension Line + Glow Aura during FIGHTING!)
       if (fishingLineMesh && floatGroup) {
         const tipPivot = rodSegments[rodSegments.length - 1];
         const tipPos = new THREE.Vector3();
@@ -2832,17 +2930,81 @@
         floatGroup.getWorldPosition(floatPos);
         floatPos.y += 0.22;
 
-        const midPoint = new THREE.Vector3()
-          .addVectors(tipPos, floatPos)
-          .multiplyScalar(0.5);
+        lastTipWorldPos.copy(tipPos);
+        lastFloatWorldPos.copy(floatPos);
 
-        const isTight = (GAME.cycle.state === 'FIGHTING' || GAME.anim.type === 'STRIKE');
-        const sagAmount = isTight ? 0.02 : (1.0 - Math.min(tensionRatio * 1.5, 0.95)) * 0.38;
-        midPoint.y -= sagAmount;
+        if (GAME.cycle.state === 'FIGHTING') {
+          const sweetMin = rodSpec.sweetRange[0];
+          const sweetMax = rodSpec.sweetRange[1];
+          const t = GAME.fight.tension;
 
-        const curve = new THREE.CatmullRomCurve3([tipPos, midPoint, floatPos]);
-        fishingLineMesh.geometry.dispose();
-        fishingLineMesh.geometry = new THREE.TubeGeometry(curve, 24, 0.007, 6, false);
+          // Build 9-point vibrating harmonic wave curve in 3D space
+          const pts = [];
+          const numPts = 9;
+          for (let i = 0; i <= numPts; i++) {
+            const u = i / numPts;
+            const p = new THREE.Vector3().lerpVectors(tipPos, floatPos, u);
+            const env = Math.sin(u * Math.PI); // 0 at ends, 1 in middle
+            if (t < sweetMin) {
+              // 🟡 Yellow Slack: Exaggerated loose whipping S-waves & heavy droop
+              p.y -= env * 0.42;
+              p.x += Math.sin(u * Math.PI * 3 + elapsedTime * 28) * 0.22 * env;
+              p.z += Math.cos(u * Math.PI * 2 + elapsedTime * 24) * 0.14 * env;
+            } else if (t > sweetMax) {
+              // 🔴 Red Over-Tension: Violent high-frequency guitar-string harmonic vibration!
+              const harmonic = Math.sin(u * Math.PI * 7 + elapsedTime * 95) * 0.13 * env;
+              const jitter = (Math.random() - 0.5) * 0.09 * env;
+              p.x += harmonic + jitter;
+              p.y += Math.cos(u * Math.PI * 6 - elapsedTime * 88) * 0.09 * env;
+            } else {
+              // 🔵 Blue Sweet Spot: Taut, powerful standing-wave vibration
+              const wave = Math.sin(u * Math.PI * 4 + elapsedTime * 55) * 0.065 * env;
+              p.x += wave;
+              p.y += Math.cos(u * Math.PI * 3 + elapsedTime * 48) * 0.045 * env;
+            }
+            pts.push(p);
+          }
+
+          const curve = new THREE.CatmullRomCurve3(pts);
+          const coreRadius = t > sweetMax ? 0.032 : (t < sweetMin ? 0.022 : 0.026);
+          const glowRadius = t > sweetMax ? 0.105 : (t < sweetMin ? 0.070 : 0.082);
+
+          fishingLineMesh.geometry.dispose();
+          fishingLineMesh.geometry = new THREE.TubeGeometry(curve, 36, coreRadius, 8, false);
+
+          if (t < sweetMin) {
+            fishingLineMesh.material.color.setHex(0xfef08a);
+          } else if (t > sweetMax) {
+            fishingLineMesh.material.color.setHex(0xffe4e6);
+          } else {
+            fishingLineMesh.material.color.setHex(0xe0f2fe);
+          }
+
+          if (fishingLineGlowMesh) {
+            fishingLineGlowMesh.visible = true;
+            fishingLineGlowMesh.geometry.dispose();
+            fishingLineGlowMesh.geometry = new THREE.TubeGeometry(curve, 36, glowRadius, 8, false);
+            fishingLineGlowMesh.material.color.setHex(t < sweetMin ? 0xfacc15 : (t > sweetMax ? 0xff0044 : 0x00f0ff));
+            fishingLineGlowMesh.material.opacity = 0.65 + Math.sin(elapsedTime * 40) * 0.25;
+          }
+        } else {
+          const midPoint = new THREE.Vector3()
+            .addVectors(tipPos, floatPos)
+            .multiplyScalar(0.5);
+
+          const isTight = (GAME.anim.type === 'STRIKE');
+          const sagAmount = isTight ? 0.02 : (1.0 - Math.min(tensionRatio * 1.5, 0.95)) * 0.38;
+          midPoint.y -= sagAmount;
+
+          const curve = new THREE.CatmullRomCurve3([tipPos, midPoint, floatPos]);
+          fishingLineMesh.geometry.dispose();
+          fishingLineMesh.geometry = new THREE.TubeGeometry(curve, 24, 0.008, 6, false);
+          fishingLineMesh.material.color.setHex(0xe0f2fe);
+
+          if (fishingLineGlowMesh) {
+            fishingLineGlowMesh.visible = false;
+          }
+        }
       }
     }
 
@@ -2872,7 +3034,7 @@
         }
       } else if (GAME.cycle.state === 'NIBBLING') {
         GAME.cycle.shrimpTimer -= delta;
-        GAME.cycle.targetSubmerge = 0.7 + Math.sin(clock.elapsedTime * 8.5) * 0.45;
+        GAME.cycle.targetSubmerge = 0.45 + Math.sin(clock.elapsedTime * 9.5) * 0.30;
 
         if (GAME.cycle.shrimpTimer <= 0) {
           triggerBitePhase();
@@ -2882,7 +3044,7 @@
         GAME.cycle.strikeWindowTime -= delta;
 
         if (GAME.cycle.strikeWindowTime <= 0) {
-          triggerMissedCycle('吐餌！蝦子吃完餌料溜走了，錯失揚竿良機！');
+          triggerMissedCycle('吐餌！蝦子警覺吐鉤溜走了，請抓準滅頂黃金時機揚竿！');
         }
       } else if (GAME.cycle.state === 'FIGHTING') {
         updateFightPhysics(delta);
@@ -2891,23 +3053,23 @@
 
     function triggerNibblePhase() {
       GAME.cycle.state = 'NIBBLING';
-      const frenzySpeedup = GAME.bossFrenzyTimer > 0 ? 0.45 : 1.0;
-      GAME.cycle.shrimpTimer = (2.4 + Math.random() * 1.8) * frenzySpeedup;
+      const frenzySpeedup = GAME.bossFrenzyTimer > 0 ? 0.55 : 1.0;
+      GAME.cycle.shrimpTimer = (2.2 + Math.random() * 1.8) * frenzySpeedup;
       playSound('plop');
 
       const spotPos = getSpotCoordinates(GAME.config.spot);
       triggerWaterRipple(spotPos.x, spotPos.z, 1.1, 2);
 
-      updateFloatStatusUI('⚠️ 浮標微頓！蝦子探餌中', 0.8, 'text-amber-400');
-      showAdvisor('💡 蝦子正在試探碰餌！點擊「輕提逗蝦」引誘深咬，等滅頂瞬間再按「揚竿開槍」！');
+      updateFloatStatusUI('⚠️ 浮標微頓！蝦子雙螯試探夾餌', 0.6, 'text-amber-400');
+      showAdvisor('💡 蝦子正在雙螯夾餌試探！此時開竿容易放槍，建議按「輕提逗蝦」引誘穩吃滅頂！');
       updateActionButtons('NIBBLING');
     }
 
     function triggerBitePhase() {
       GAME.cycle.state = 'BITING';
       const rodSpec = ROD_SPECS[GAME.config.rod];
-      const frenzyBonus = GAME.bossFrenzyTimer > 0 ? 1.5 : 0.0;
-      GAME.cycle.strikeWindowTime = 2.4 + (1.0 - rodSpec.hardness) * 1.0 + frenzyBonus;
+      const frenzyBonus = GAME.bossFrenzyTimer > 0 ? 1.0 : 0.0;
+      GAME.cycle.strikeWindowTime = 2.6 + (1.0 - rodSpec.hardness) * 0.9 + frenzyBonus;
       playSound('plop');
 
       const spotPos = getSpotCoordinates(GAME.config.spot);
@@ -3046,9 +3208,9 @@
 
       playSound('strike');
 
-      // Determine outcome before triggering 3D Strike Whip & Water Column
+      // Determine outcome before triggering 3D Strike Whip & Water Column (requires waiting for BITING or final deep sink!)
       let outcome = 'EMPTY';
-      if (GAME.cycle.state === 'BITING') {
+      if (GAME.cycle.state === 'BITING' || (GAME.cycle.state === 'NIBBLING' && GAME.cycle.shrimpTimer < 0.25)) {
         outcome = 'HOOKED';
       } else if (GAME.cycle.state === 'NIBBLING') {
         outcome = 'EARLY';
@@ -3070,11 +3232,229 @@
         triggerSuccessfulHook();
       } else if (outcome === 'EARLY') {
         flashStrikeImpactOverlay('💥 放槍！太早開竿，蝦未吞鉤！', 'from-slate-700 via-amber-700 to-red-800');
-        triggerMissedCycle('放槍！太早開竿，蝦子只是試探碰餌尚未就口！');
+        triggerMissedCycle('放槍！太早開竿，蝦子還在雙螯試探尚未吞鉤！');
       } else {
         flashStrikeImpactOverlay('💨 猛力揚竿！水柱破空而出！', 'from-cyan-700 via-sky-600 to-blue-800');
         triggerMissedCycle('空竿！浮標尚未滅頂，標組破水飛起！請重新拋竿定標！');
       }
+    }
+
+    /* Toggle 100% Clean Screen Mode during FIGHTING: hides ALL UI & headers, leaving ONLY #btn-fight-reel! */
+    function setFightCleanScreenMode(isFighting) {
+      const idsToHide = [
+        'top-header',
+        'hud-top-center',
+        'hud-top-left',
+        'hud-top-right',
+        'normal-controls',
+        'boss-frenzy-banner',
+        'center-strike-alert',
+        'quick-toast',
+        'strike-impact-overlay'
+      ];
+      idsToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (isFighting) {
+          el.classList.add('hidden');
+        } else {
+          if (id === 'boss-frenzy-banner') {
+            if (GAME.bossFrenzyTimer > 0) el.classList.remove('hidden');
+          } else {
+            el.classList.remove('hidden');
+          }
+        }
+      });
+
+      const fightHud = document.getElementById('fight-hud');
+      const tCanvas = document.getElementById('fight-tension-canvas');
+      if (isFighting) {
+        if (fightHud) fightHud.classList.remove('hidden');
+        if (tCanvas) tCanvas.classList.remove('hidden');
+      } else {
+        if (fightHud) fightHud.classList.add('hidden');
+        if (tCanvas) {
+          const ctx = tCanvas.getContext('2d');
+          if (ctx) ctx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+          tCanvas.classList.add('hidden');
+        }
+        const threeContainer = document.getElementById('three-container');
+        if (threeContainer) threeContainer.style.transform = '';
+      }
+
+      onWindowResize();
+      requestAnimationFrame(onWindowResize);
+    }
+
+    /* 2D Full-Screen Exaggerated Tension Line, Harmonic Waves & Impact Speed-Lines Renderer */
+    function renderExaggeratedTensionLineOverlay(elapsedTime) {
+      const tCanvas = document.getElementById('fight-tension-canvas');
+      if (!tCanvas || !camera) return;
+      const ctx = tCanvas.getContext('2d');
+      const w = tCanvas.width;
+      const h = tCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const rodSpec = ROD_SPECS[GAME.config.rod];
+      const sweetMin = rodSpec.sweetRange[0];
+      const sweetMax = rodSpec.sweetRange[1];
+      const tension = GAME.fight.tension;
+      const stamina = Math.round(GAME.fight.shrimpStamina);
+
+      // Project 3D Rod Tip & 3D Float/Shrimp positions to 2D Screen Space
+      const tipProj = lastTipWorldPos.clone().project(camera);
+      const floatProj = lastFloatWorldPos.clone().project(camera);
+
+      const x1 = (tipProj.x * 0.5 + 0.5) * w;
+      const y1 = (-tipProj.y * 0.5 + 0.5) * h;
+      const x2 = (floatProj.x * 0.5 + 0.5) * w;
+      const y2 = (-floatProj.y * 0.5 + 0.5) * h;
+
+      // Determine exaggerated color theme: Yellow (< sweetMin), Blue (sweetMin..sweetMax), Red (> sweetMax)
+      let mainColor = '#00f0ff';
+      let glowColor = 'rgba(0, 240, 255, 0.85)';
+      let edgeColor = 'rgba(14, 165, 233, 0.24)';
+      let stateTag = '🔵 張力適中 • 猛烈消耗蝦體力!';
+      if (tension < sweetMin) {
+        mainColor = '#facc15';
+        glowColor = 'rgba(250, 204, 21, 0.92)';
+        edgeColor = 'rgba(250, 204, 21, 0.30)';
+        stateTag = '🟡 釣線過鬆快脫鉤 • 快點按拉緊!!';
+      } else if (tension > sweetMax) {
+        mainColor = '#ff1e42';
+        glowColor = 'rgba(255, 30, 66, 0.96)';
+        edgeColor = 'rgba(239, 68, 68, 0.38)';
+        stateTag = '🔴 張力極限快斷線 • 立刻放手!!';
+      }
+
+      // 1. Perimeter Radial Tension Glow & Anime Speed-Lines
+      const radGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.28, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+      radGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      radGrad.addColorStop(1, edgeColor);
+      ctx.fillStyle = radGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw dynamic impact speed-lines converging toward the thrashing shrimp (x2, y2)
+      ctx.save();
+      ctx.strokeStyle = mainColor;
+      const lineCount = tension > sweetMax ? 36 : 22;
+      for (let i = 0; i < lineCount; i++) {
+        const angle = (i / lineCount) * Math.PI * 2 + Math.sin(elapsedTime * 18 + i) * 0.04;
+        const innerR = Math.min(w, h) * (0.34 + (Math.sin(elapsedTime * 45 + i * 7) * 0.06));
+        const outerR = Math.max(w, h) * 0.85;
+        ctx.globalAlpha = (0.14 + (tension / 100) * 0.22) * (0.5 + 0.5 * Math.sin(elapsedTime * 35 + i * 3));
+        ctx.lineWidth = (i % 3 === 0) ? 3.2 : 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x2 + Math.cos(angle) * innerR, y2 + Math.sin(angle) * innerR);
+        ctx.lineTo(x2 + Math.cos(angle) * outerR, y2 + Math.sin(angle) * outerR);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // 2. Exaggerated Multi-Wave Vibrating Tension Line between Rod Tip (x1, y1) and Prawn (x2, y2)
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len; // Normal vector X
+      const ny = dx / len;  // Normal vector Y
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Draw 3 intertwined harmonic tension waves
+      for (let strand = -1; strand <= 1; strand++) {
+        ctx.beginPath();
+        const steps = 44;
+        for (let s = 0; s <= steps; s++) {
+          const u = s / steps;
+          const env = Math.sin(u * Math.PI);
+          let bx = x1 + dx * u;
+          let by = y1 + dy * u;
+
+          let offset = 0;
+          if (tension < sweetMin) {
+            // Loose whipping slack wave
+            by += env * 58;
+            offset = Math.sin(u * Math.PI * 3.5 + elapsedTime * 26 + strand * 1.4) * (28 + strand * 9) * env;
+          } else if (tension > sweetMax) {
+            // Extreme high-frequency violent saw/harmonic vibration
+            offset = Math.sin(u * Math.PI * 11 + elapsedTime * 110 + strand * 2.1) * (22 + strand * 8) * env
+                   + (Math.random() - 0.5) * 16 * env;
+          } else {
+            // Taut resonant power wave
+            offset = Math.sin(u * Math.PI * 6 + elapsedTime * 68 + strand * 1.8) * (14 + strand * 5) * env;
+          }
+
+          const px = bx + nx * offset;
+          const py = by + ny * offset;
+          if (s === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+
+        ctx.shadowColor = mainColor;
+        ctx.shadowBlur = strand === 0 ? 28 : 16;
+        ctx.strokeStyle = strand === 0 ? '#ffffff' : mainColor;
+        ctx.lineWidth = strand === 0 ? (tension > sweetMax ? 6.5 : 5.0) : 2.8;
+        ctx.globalAlpha = strand === 0 ? 0.98 : 0.72;
+        ctx.stroke();
+      }
+
+      // 3. Electric Tension Sparks & Shock Rings at Rod Tip (x1,y1) and Water Entry (x2,y2)
+      const pulseR = 16 + Math.sin(elapsedTime * 42) * 8 + (tension / 100) * 18;
+      [ {x: x1, y: y1, r: pulseR * 0.75}, {x: x2, y: y2, r: pulseR * 1.25} ].forEach((node) => {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 3.5;
+        ctx.shadowColor = mainColor;
+        ctx.shadowBlur = 22;
+        ctx.globalAlpha = 0.85;
+        ctx.stroke();
+
+        // Spark rays bursting from each tension anchor
+        const sparks = tension > sweetMax ? 10 : 6;
+        for (let k = 0; k < sparks; k++) {
+          const ang = (k / sparks) * Math.PI * 2 + elapsedTime * 25;
+          const rIn = node.r * 0.4;
+          const rOut = node.r * (1.35 + (Math.random() * 0.5));
+          ctx.beginPath();
+          ctx.moveTo(node.x + Math.cos(ang) * rIn, node.y + Math.sin(ang) * rIn);
+          ctx.lineTo(node.x + Math.cos(ang) * rOut, node.y + Math.sin(ang) * rOut);
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+        }
+      });
+
+      // 4. Floating Tension Callout Pill right alongside the midpoint of the Tension Line
+      const midX = Math.max(130, Math.min(w - 130, (x1 + x2) * 0.5 + nx * 42));
+      const midY = Math.max(60, Math.min(h - 160, (y1 + y2) * 0.5 + ny * 42));
+      ctx.font = '900 15px "Noto Sans TC", sans-serif';
+      const calloutText = `⚡ 張力 ${Math.round(tension)}% ｜ 蝦體力 ${stamina}%`;
+      const textW = Math.max(ctx.measureText(calloutText).width, ctx.measureText(stateTag).width) + 28;
+      const boxH = 48;
+
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.86)';
+      ctx.strokeStyle = mainColor;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.roundRect(midX - textW / 2, midY - boxH / 2, textW, boxH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(calloutText, midX, midY - 9);
+
+      ctx.font = '800 12px "Noto Sans TC", sans-serif';
+      ctx.fillStyle = mainColor;
+      ctx.fillText(stateTag, midX, midY + 11);
+
+      ctx.restore();
     }
 
     function triggerSuccessfulHook() {
@@ -3085,21 +3465,24 @@
 
       GAME.cycle.currentPrawn = generateCaughtPrawn();
 
-      GAME.fight.tension = 50;
-      GAME.fight.targetTension = 50;
+      GAME.fight.tension = 46;
+      GAME.fight.targetTension = 46;
       GAME.fight.shrimpStamina = 100;
       GAME.fight.landingProgress = 0;
       GAME.fight.shrimpBehavior = 'normal';
-      GAME.fight.behaviorTimer = 2.0;
+      GAME.fight.behaviorTimer = 1.1;
       GAME.fight.isReeling = false;
+      GAME.fight.tapBoostTimer = 0;
+      GAME.fight.dangerTimer = 0;
       GAME.fight.tiltDirection = 0;
       GAME.fight.fightStartTime = performance.now();
 
-      document.getElementById('fight-hud').classList.remove('hidden');
-      document.getElementById('normal-controls').classList.add('hidden');
+      // Clear the entire screen so ONLY the fight button remains!
+      setFightCleanScreenMode(true);
       updateFloatStatusUI('🔥 中蝦滿弓搏鬥中！', 4.0, 'text-rose-400 font-black animate-ping');
 
-      showAdvisor('⚡ 成功開槍中蝦！按住【收線拉竿】維持張力在綠色安全區！');
+      const rodSpec = ROD_SPECS[GAME.config.rod];
+      updateFightHUD(rodSpec.sweetRange[0], rodSpec.sweetRange[1]);
     }
 
     function triggerMissedCycle(reason) {
@@ -3115,147 +3498,202 @@
     }
 
     /* =====================================================================
-       5. HARDCORE FIGHT & LANDING MECHANICS (搏蝦起蝦難度模擬)
+       5. COLOR-CHANGING SINGLE-BUTTON FIGHT & LANDING MECHANICS
+          (黃色=快脫鉤 / 藍色=適中 / 紅色=快斷線 + 適度挑戰性)
        ===================================================================== */
     function updateFightPhysics(delta) {
       const rodSpec = ROD_SPECS[GAME.config.rod];
-      const prawn = GAME.cycle.currentPrawn;
-      const prawnWeightFactor = prawn ? (prawn.weight / 100.0) : 1.0;
+      const pondSpec = POND_SPECS[GAME.config.pond];
+      const sweetMin = rodSpec.sweetRange[0]; // ~28% (Below this = 黃色快脫鉤)
+      const sweetMax = rodSpec.sweetRange[1]; // ~72% (Above this = 紅色快斷線)
+      const prawnWeightMod = GAME.cycle.currentPrawn ? (GAME.cycle.currentPrawn.weight / 95.0) : 1.0;
+      const diffFactor = pondSpec.difficulty * Math.max(0.85, Math.min(1.3, prawnWeightMod));
 
-      // 1. Shrimp AI Behavior State Machine
+      if (GAME.fight.tapBoostTimer > 0) {
+        GAME.fight.tapBoostTimer = Math.max(0, GAME.fight.tapBoostTimer - delta);
+      }
+
+      // 1. Dynamic Shrimp Fight Behavior Surges (makes fighting tactile & slightly more challenging!)
       GAME.fight.behaviorTimer -= delta;
       if (GAME.fight.behaviorTimer <= 0) {
-        // Select next random behavior: Normal, Tail Blast, Dart Left, Dart Right
-        const rand = Math.random();
-        if (rand < 0.35) {
+        const roll = Math.random();
+        if (roll < 0.42) {
+          // Tail blast backward surge: spikes tension upward toward Red!
           GAME.fight.shrimpBehavior = 'tail_blast';
-          GAME.fight.behaviorTimer = 1.6;
+          GAME.fight.behaviorTimer = 1.0 + Math.random() * 0.7;
           playSound('tail_kick');
-          document.getElementById('fight-behavior-badge').innerText = '💥 泰國蝦大後踢暴衝！危險！';
-          document.getElementById('fight-behavior-badge').className = 'px-2 py-0.5 rounded-full bg-red-950 text-red-300 border border-red-700/80 text-[11px] font-bold animate-ping';
-        } else if (rand < 0.65) {
-          GAME.fight.shrimpBehavior = 'dart_left';
-          GAME.fight.behaviorTimer = 2.0;
-          document.getElementById('fight-behavior-badge').innerText = '⬅️ 蝦子往左側猛竄！需向右控竿！';
-          document.getElementById('fight-behavior-badge').className = 'px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700/80 text-[11px] font-bold';
-        } else if (rand < 0.85) {
-          GAME.fight.shrimpBehavior = 'dart_right';
-          GAME.fight.behaviorTimer = 2.0;
-          document.getElementById('fight-behavior-badge').innerText = '➡️ 蝦子往右側猛竄！需向左控竿！';
-          document.getElementById('fight-behavior-badge').className = 'px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700/80 text-[11px] font-bold';
+          if (floatGroup) {
+            triggerWaterSplash(floatGroup.position.x, floatGroup.position.z, 18, 'entry');
+          }
+        } else if (roll < 0.72) {
+          // Slack rush forward: drops tension rapidly toward Yellow!
+          GAME.fight.shrimpBehavior = 'slack_rush';
+          GAME.fight.behaviorTimer = 1.0 + Math.random() * 0.7;
         } else {
           GAME.fight.shrimpBehavior = 'normal';
-          GAME.fight.behaviorTimer = 2.2;
-          document.getElementById('fight-behavior-badge').innerText = '🦞 蝦子在水底頑抗抱底...';
-          document.getElementById('fight-behavior-badge').className = 'px-2 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700 text-[11px] font-semibold';
+          GAME.fight.behaviorTimer = 1.1 + Math.random() * 0.8;
         }
       }
 
-      // 2. Tension Calculation
+      const badgeEl = document.getElementById('fight-behavior-badge');
+      if (badgeEl) {
+        if (GAME.fight.shrimpBehavior === 'tail_blast') {
+          badgeEl.innerText = '💥 大蝦猛烈倒退彈跳！（張力飆升注意放手）';
+          badgeEl.className = 'font-bold text-rose-400 animate-pulse truncate';
+        } else if (GAME.fight.shrimpBehavior === 'slack_rush') {
+          badgeEl.innerText = '💨 蝦子往回衝鬆線！（快點按鈕拉緊防脫鉤）';
+          badgeEl.className = 'font-bold text-yellow-300 animate-pulse truncate';
+        } else if (GAME.fight.shrimpStamina > 35) {
+          badgeEl.innerText = '🦞 泰國蝦生猛拉鋸中！維持藍色區間！';
+          badgeEl.className = 'font-bold text-sky-300 truncate';
+        } else {
+          badgeEl.innerText = '✨ 泰國蝦快沒力了！穩住藍色準備起蝦！';
+          badgeEl.className = 'font-bold text-emerald-300 truncate';
+        }
+      }
+
+      // 2. Single-Button Tension Physics with Shrimp Surge Forces
+      const activePull = GAME.fight.isReeling || (GAME.fight.tapBoostTimer > 0);
       let tensionDelta = 0;
 
-      // Base decay when player is not reeling
-      if (!GAME.fight.isReeling) {
-        tensionDelta -= 28 * delta;
+      if (activePull) {
+        // Player pulling / tapping raises tension
+        tensionDelta += 38.0 * delta;
       } else {
-        // Reeling increases tension
-        tensionDelta += 42 * (1.2 / rodSpec.buffer) * delta;
+        // Releasing lets tension drop
+        tensionDelta -= 24.0 * delta;
       }
 
-      // Shrimp behavior effects on tension
+      // Apply shrimp behavior surge forces
       if (GAME.fight.shrimpBehavior === 'tail_blast') {
-        tensionDelta += 45 * prawnWeightFactor * delta;
-      } else if (GAME.fight.shrimpBehavior === 'dart_left') {
-        // If player tilted right to counter, stabilize tension; otherwise spike!
-        if (GAME.fight.tiltDirection === 1) {
-          tensionDelta -= 12 * delta; // good counter
-        } else {
-          tensionDelta += 35 * delta; // failing to counter
-        }
-      } else if (GAME.fight.shrimpBehavior === 'dart_right') {
-        // If player tilted left to counter, stabilize tension; otherwise spike!
-        if (GAME.fight.tiltDirection === -1) {
-          tensionDelta -= 12 * delta; // good counter
-        } else {
-          tensionDelta += 35 * delta; // failing to counter
-        }
+        tensionDelta += (23.0 * diffFactor) * delta;
+      } else if (GAME.fight.shrimpBehavior === 'slack_rush') {
+        tensionDelta -= (16.0 * diffFactor) * delta;
       }
 
-      // Apply tension
+      // Natural water & prawn struggle oscillation
+      tensionDelta += Math.sin(clock.elapsedTime * 6.5) * 6.5 * delta;
+
       GAME.fight.tension = Math.max(0, Math.min(100, GAME.fight.tension + tensionDelta));
 
-      // 3. Tension Zones & Landing Progress
-      const sweetMin = rodSpec.sweetRange[0];
-      const sweetMax = rodSpec.sweetRange[1];
-
+      // 3. Stamina Depletion ONLY in Blue Zone (適中) & Danger Accumulation in Yellow/Red
       if (GAME.fight.tension >= sweetMin && GAME.fight.tension <= sweetMax) {
-        // SWEET SPOT! Drain shrimp stamina & gain landing progress
-        const drainRate = 18 * (1.0 / prawnWeightFactor);
+        // BLUE ZONE (適中): Deplete shrimp stamina (~5.5-6.5s of active Blue control)
+        GAME.fight.dangerTimer = Math.max(0, (GAME.fight.dangerTimer || 0) - delta * 1.35);
+        const drainRate = 18.5 / Math.max(0.9, diffFactor * 0.92);
         GAME.fight.shrimpStamina = Math.max(0, GAME.fight.shrimpStamina - drainRate * delta);
-        if (GAME.fight.isReeling) {
-          GAME.fight.landingProgress = Math.min(100, GAME.fight.landingProgress + 22 * delta);
-        }
       } else if (GAME.fight.tension < sweetMin) {
-        // SLACK ZONE: High risk of unhooking!
-        if (Math.random() < 0.04 * delta * 60) {
-          // Unhooked escape!
-          triggerFightFailure('脫鉤！釣線過鬆，泰國蝦後踢甩頭脫鉤逃跑！');
+        // YELLOW ZONE (快脫鉤): Too loose! Stamina does NOT drain (and slightly recovers if very slack)
+        const slackSeverity = (sweetMin - GAME.fight.tension) / sweetMin; // 0 to 1
+        GAME.fight.dangerTimer = (GAME.fight.dangerTimer || 0) + (0.65 + slackSeverity * 0.85) * delta;
+        if (GAME.fight.tension < 15) {
+          GAME.fight.shrimpStamina = Math.min(100, GAME.fight.shrimpStamina + 4.5 * delta);
+        }
+        if (GAME.fight.dangerTimer >= 1.45) {
+          triggerFightFailure('脫鉤！按鈕變【🟡黃色】太久未拉緊，泰國蝦趁釣線鬆弛脫鉤溜走了！');
           return;
         }
-      } else if (GAME.fight.tension > sweetMax) {
-        // DANGER ZONE: High risk of line snapping or tearing mouth!
-        playSound('tension_strain');
-        if (GAME.fight.tension > 95) {
-          if (Math.random() < 0.08 * delta * 60 * rodSpec.breakRate) {
-            triggerFightFailure('斷線！張力過載爆線，母線/子線承受不住斷裂！');
-            return;
-          }
+      } else {
+        // RED ZONE (快斷線): Too tight! Stamina does NOT drain, line strains & snaps if held too long
+        const tightSeverity = (GAME.fight.tension - sweetMax) / (100 - sweetMax); // 0 to 1
+        GAME.fight.dangerTimer = (GAME.fight.dangerTimer || 0) + (0.70 + tightSeverity * 0.95) * delta;
+        if (Math.random() < 0.35) playSound('tension_strain');
+        if (GAME.fight.dangerTimer >= 1.40) {
+          triggerFightFailure('斷線！按鈕變【🔴紅色】未及時放手，大蝦暴衝將子線拉斷了！');
+          return;
         }
       }
 
-      // 4. Check for Landing Victory
-      if (GAME.fight.shrimpStamina <= 0 && GAME.fight.landingProgress >= 100) {
+      // Sync landing progress directly to stamina depletion (100% progress when 0% stamina!)
+      GAME.fight.landingProgress = Math.min(100, Math.round(100 - GAME.fight.shrimpStamina));
+
+      // 4. As soon as shrimp runs out of stamina (0%), launch 3D Landing Fly animation!
+      if (GAME.fight.shrimpStamina <= 0) {
+        if (floatGroup) {
+          triggerWaterSplash(floatGroup.position.x, floatGroup.position.z, 55, 'lift');
+        }
         triggerLandingVictory();
         return;
       }
 
-      // 5. Update Fight UI
+      // 5. Update Color-Changing Fight Button UI
       updateFightHUD(sweetMin, sweetMax);
     }
 
     function updateFightHUD(sweetMin, sweetMax) {
       const tension = Math.round(GAME.fight.tension);
-      document.getElementById('tension-fill-bar').style.width = tension + '%';
+      const fillBar = document.getElementById('tension-fill-bar');
+      if (fillBar) fillBar.style.width = tension + '%';
 
       const statusEl = document.getElementById('fight-tension-pct');
+      const reelBtn = document.getElementById('btn-fight-reel');
+      const btnIcon = document.getElementById('fight-btn-icon');
+      const btnLabel = document.getElementById('fight-btn-label');
+      const stamina = Math.round(GAME.fight.shrimpStamina);
+      const progress = Math.round(GAME.fight.landingProgress);
+
+      const subEl = document.getElementById('fight-btn-sub');
+      const behaviorText = GAME.fight.shrimpBehavior === 'tail_blast'
+        ? '💥大蝦暴衝倒退!'
+        : (GAME.fight.shrimpBehavior === 'slack_rush' ? '💨蝦子回衝鬆線!' : '🦞猛烈拉鋸中');
+
       if (tension < sweetMin) {
-        statusEl.innerText = tension + '% [過鬆-脫鉤危險]';
-        statusEl.className = 'font-mono font-bold text-blue-400';
+        // 黃色 = 快脫鉤 (Yellow)
+        if (statusEl) {
+          statusEl.innerText = tension + '% [🟡快脫鉤]';
+          statusEl.className = 'font-mono font-bold text-yellow-300 animate-pulse';
+        }
+        if (reelBtn) {
+          reelBtn.className = 'relative w-full py-4 px-5 rounded-2xl border-4 border-yellow-200 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-slate-950 font-black text-base sm:text-lg shadow-[0_0_45px_rgba(250,204,21,0.95)] transition-all duration-75 active:scale-95 select-none overflow-hidden flex flex-col items-center justify-center gap-1.5';
+        }
+        if (btnIcon) btnIcon.innerText = '🟡';
+        if (btnLabel) btnLabel.innerText = `快脫鉤了！快連點拉緊！(張力 ${tension}% • 體力 ${stamina}%)`;
+        if (subEl) subEl.innerText = `${behaviorText} ｜ 🟡黃=快脫鉤(快按) • 🔵藍=適中 • 🔴紅=快斷線`;
       } else if (tension > sweetMax) {
-        statusEl.innerText = tension + '% [過緊-斷線危險!]';
-        statusEl.className = 'font-mono font-bold text-rose-500 animate-pulse';
+        // 紅色 = 快斷線 (Red)
+        if (statusEl) {
+          statusEl.innerText = tension + '% [🔴快斷線!]';
+          statusEl.className = 'font-mono font-bold text-red-400 animate-ping';
+        }
+        if (reelBtn) {
+          reelBtn.className = 'relative w-full py-4 px-5 rounded-2xl border-4 border-red-200 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-black text-base sm:text-lg shadow-[0_0_50px_rgba(239,68,68,1.0)] transition-all duration-75 active:scale-95 select-none overflow-hidden flex flex-col items-center justify-center gap-1.5 animate-pulse';
+        }
+        if (btnIcon) btnIcon.innerText = '🔴';
+        if (btnLabel) btnLabel.innerText = `快斷線了！立刻放手別按！(張力 ${tension}% • 體力 ${stamina}%)`;
+        if (subEl) subEl.innerText = `${behaviorText} ｜ 🟡黃=快脫鉤 • 🔵藍=適中 • 🔴紅=快斷線(放手!)`;
       } else {
-        statusEl.innerText = tension + '% [安全受力消耗中]';
-        statusEl.className = 'font-mono font-bold text-emerald-400';
+        // 藍色 = 適中 (Blue)
+        if (statusEl) {
+          statusEl.innerText = tension + '% [🔵藍色適中]';
+          statusEl.className = 'font-mono font-bold text-sky-400';
+        }
+        if (reelBtn) {
+          reelBtn.className = 'relative w-full py-4 px-5 rounded-2xl border-4 border-sky-200 bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 text-white font-black text-base sm:text-lg shadow-[0_0_40px_rgba(14,165,233,0.9)] transition-all duration-75 active:scale-95 select-none overflow-hidden flex flex-col items-center justify-center gap-1.5';
+        }
+        if (btnIcon) btnIcon.innerText = '🔵';
+        if (btnLabel) btnLabel.innerText = `藍色適中！點按搏蝦耗體力 (張力 ${tension}% • 體力 ${stamina}%)`;
+        if (subEl) subEl.innerText = `${behaviorText} ｜ 🟡黃=快脫鉤 • 🔵藍=適中(耗體力) • 🔴紅=快斷線`;
       }
 
       // Stamina & Progress
-      const stamina = Math.round(GAME.fight.shrimpStamina);
-      const progress = Math.round(GAME.fight.landingProgress);
-      document.getElementById('shrimp-stamina-val').innerText = stamina + '%';
-      document.getElementById('shrimp-stamina-bar').style.width = stamina + '%';
+      const stamVal = document.getElementById('shrimp-stamina-val');
+      const stamBar = document.getElementById('shrimp-stamina-bar');
+      const progVal = document.getElementById('landing-progress-val');
+      const progBar = document.getElementById('landing-progress-bar');
 
-      document.getElementById('landing-progress-val').innerText = progress + '%';
-      document.getElementById('landing-progress-bar').style.width = progress + '%';
+      if (stamVal) stamVal.innerText = stamina + '%';
+      if (stamBar) stamBar.style.width = stamina + '%';
+      if (progVal) progVal.innerText = progress + '%';
+      if (progBar) progBar.style.width = progress + '%';
     }
 
     function triggerFightFailure(reason) {
       playSound('miss');
       GAME.cycle.state = 'MISSED';
+      GAME.fight.isReeling = false;
 
-      // Hide fight HUD
-      document.getElementById('fight-hud').classList.add('hidden');
-      document.getElementById('normal-controls').classList.remove('hidden');
+      // Restore normal HUD & clear fight screen mode
+      setFightCleanScreenMode(false);
 
       showQuickToast(reason, '💔');
       updateFloatStatusUI('起蝦失敗', 0.0, 'text-slate-400');
@@ -3267,16 +3705,27 @@
     function triggerLandingVictory() {
       playSound('fanfare');
       GAME.cycle.state = 'LANDED';
+      GAME.fight.isReeling = false;
 
       const fightDuration = ((performance.now() - GAME.fight.fightStartTime) / 1000).toFixed(1);
       const prawn = GAME.cycle.currentPrawn;
       prawn.fightTime = fightDuration;
 
-      // Hide fight HUD
-      document.getElementById('fight-hud').classList.add('hidden');
-      document.getElementById('normal-controls').classList.remove('hidden');
+      // Restore normal HUD & clear fight screen mode
+      setFightCleanScreenMode(false);
 
-      // Populate Inspection Modal
+      // Start 1.15s 3D Landing Fly animation (rod lifts high & 3D prawn flies out of water!)
+      GAME.anim.type = 'LANDING_FLY';
+      GAME.anim.timer = 0;
+      GAME.anim.duration = 1.15;
+      GAME.anim.landStartX = floatGroup ? floatGroup.position.x : 0;
+      GAME.anim.landStartZ = floatGroup ? floatGroup.position.z : -1.2;
+
+      showQuickToast('🎉 泰國蝦沒力出水！霸氣提竿起蝦【' + prawn.title + '】！', '🦞');
+      updateFloatStatusUI('🎉 成功起蝦出水！', 0.0, 'text-emerald-400 font-black');
+      showAdvisor('🎉 漂亮起蝦！泰國蝦體力耗盡破水飛起！');
+
+      // Populate Inspection Modal (will be shown automatically when LANDING_FLY finishes in 1.15s)
       document.getElementById('catch-prawn-title').innerText = prawn.title;
       document.getElementById('catch-prawn-sub').innerText = prawn.subtitle;
       document.getElementById('catch-prawn-weight').innerHTML = prawn.weight.toFixed(1) + ' <span class="text-xs text-slate-300">克</span>';
@@ -3285,9 +3734,6 @@
       document.getElementById('catch-prawn-claw').innerText = prawn.clawLength.toFixed(1) + ' cm';
       document.getElementById('catch-fight-time').innerText = fightDuration + ' 秒';
       document.getElementById('catch-grade-badge').innerText = prawn.grade;
-
-      // Open Modal
-      document.getElementById('modal-catch-inspect').classList.remove('hidden');
     }
 
     /* Generates realistic random prawn based on pond type and bait preference */
@@ -3565,6 +4011,15 @@
       document.getElementById('summary-bait-name').innerText = bait.name;
       document.getElementById('summary-pond-spot').innerText = pond.name + ' • ' + spot.name;
 
+      const pillRod = document.getElementById('pill-rod-name');
+      const pillFloat = document.getElementById('pill-float-name');
+      const pillBait = document.getElementById('pill-bait-name');
+      const pillPond = document.getElementById('pill-pond-name');
+      if (pillRod) pillRod.innerText = ROD_SPECS[GAME.config.rod].name.replace(/[【】]/g, ' ').trim();
+      if (pillFloat) pillFloat.innerText = FLOAT_SPECS[GAME.config.float].name.replace(/[【】]/g, '');
+      if (pillBait) pillBait.innerText = bait.name;
+      if (pillPond) pillPond.innerText = pond.name + ' • ' + GAME.config.spot + '區';
+
       // Update Mini Radar active spot styling
       ['A', 'B', 'C', 'D'].forEach(s => {
         const el = document.getElementById('radar-spot-' + s);
@@ -3591,50 +4046,24 @@
       }
       document.getElementById('btn-action-strike').addEventListener('click', actionStrike);
 
-      // Fight Controls
+      // Single-Button Fight Control (Supports holding OR clicking/tapping!)
       const reelBtn = document.getElementById('btn-fight-reel');
-      reelBtn.addEventListener('mousedown', () => { GAME.fight.isReeling = true; });
+      if (reelBtn) {
+        reelBtn.addEventListener('mousedown', () => {
+          GAME.fight.isReeling = true;
+          GAME.fight.tapBoostTimer = 0.22;
+        });
+        reelBtn.addEventListener('click', () => {
+          GAME.fight.tapBoostTimer = 0.24;
+        });
+        reelBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          GAME.fight.isReeling = true;
+          GAME.fight.tapBoostTimer = 0.24;
+        }, { passive: false });
+      }
       window.addEventListener('mouseup', () => { GAME.fight.isReeling = false; });
-      reelBtn.addEventListener('touchstart', (e) => { e.preventDefault(); GAME.fight.isReeling = true; }, { passive: false });
       window.addEventListener('touchend', () => { GAME.fight.isReeling = false; });
-
-      // Tilt Left / Right Buttons
-      const tiltLeftBtn = document.getElementById('btn-fight-tilt-left');
-      const tiltRightBtn = document.getElementById('btn-fight-tilt-right');
-
-      tiltLeftBtn.addEventListener('mousedown', () => {
-        GAME.fight.tiltDirection = -1;
-        if (rodGroup) rodGroup.rotation.z = 0.25;
-      });
-      tiltLeftBtn.addEventListener('mouseup', () => {
-        GAME.fight.tiltDirection = 0;
-        if (rodGroup) rodGroup.rotation.z = 0.05;
-      });
-      tiltLeftBtn.addEventListener('touchstart', () => {
-        GAME.fight.tiltDirection = -1;
-        if (rodGroup) rodGroup.rotation.z = 0.25;
-      });
-      tiltLeftBtn.addEventListener('touchend', () => {
-        GAME.fight.tiltDirection = 0;
-        if (rodGroup) rodGroup.rotation.z = 0.05;
-      });
-
-      tiltRightBtn.addEventListener('mousedown', () => {
-        GAME.fight.tiltDirection = 1;
-        if (rodGroup) rodGroup.rotation.z = -0.25;
-      });
-      tiltRightBtn.addEventListener('mouseup', () => {
-        GAME.fight.tiltDirection = 0;
-        if (rodGroup) rodGroup.rotation.z = 0.05;
-      });
-      tiltRightBtn.addEventListener('touchstart', () => {
-        GAME.fight.tiltDirection = 1;
-        if (rodGroup) rodGroup.rotation.z = -0.25;
-      });
-      tiltRightBtn.addEventListener('touchend', () => {
-        GAME.fight.tiltDirection = 0;
-        if (rodGroup) rodGroup.rotation.z = 0.05;
-      });
 
       // Spacebar or Enter to strike / cast
       window.addEventListener('keydown', (e) => {
@@ -3690,11 +4119,19 @@
       });
 
       document.getElementById('btn-open-setup').addEventListener('click', () => {
-        // Start directly in the 3D shrimp pool so players can immediately cast, strike, or call the boss!
-      actionCast();
+        document.getElementById('modal-setup').classList.remove('hidden');
       });
+      const quickConfigEl = document.getElementById('header-quick-config');
+      if (quickConfigEl) {
+        quickConfigEl.addEventListener('click', () => {
+          document.getElementById('modal-setup').classList.remove('hidden');
+        });
+      }
       document.getElementById('btn-close-setup-modal').addEventListener('click', () => {
         document.getElementById('modal-setup').classList.add('hidden');
+        buildFloat();
+        recalculateEnvironment();
+        if (GAME.cycle.state === 'IDLE') actionCast();
       });
 
       document.getElementById('btn-open-guide').addEventListener('click', () => {
@@ -3793,7 +4230,10 @@
         document.getElementById('modal-setup').classList.add('hidden');
         buildFloat();
         recalculateEnvironment();
-        showQuickToast('裝備配置完成！祝您大咬連發！', '🎣');
+        showQuickToast('裝備配置完成！揮竿拋投開釣！', '🎣');
+        if (GAME.cycle.state !== 'FIGHTING') {
+          actionCast();
+        }
       });
     }
 
@@ -3867,9 +4307,8 @@
       attachEventListeners();
       recalculateEnvironment();
 
-      // Show setup modal initially so player can choose rod, float, bait, pond, spot
-      // Start directly in the 3D shrimp pool so players can immediately cast, strike, or call the boss!
-      actionCast();
+      // Show the Equipment & Pond Setup Wizard initially so the player can choose Rod, Float, Bait, Pond & Spot!
+      document.getElementById('modal-setup').classList.remove('hidden');
     };
   </script>
 </body>
